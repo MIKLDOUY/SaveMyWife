@@ -4,7 +4,7 @@ watcher.py — Version stable pour GitHub Codespaces
 --------------------------------------------------
 Ce script :
 - Récupère les essais cliniques TNBC depuis ClinicalTrials.gov
-- Filtre les essais pertinents (France + Europe utile)
+- Filtre les essais pertinents (France + Europe élargie)
 - Analyse les biomarqueurs (NECTIN4, BRCA, PD-L1, etc.)
 - Calcule un score de pertinence
 - Calcule la distance depuis Pontcharra vers le centre le plus proche
@@ -12,23 +12,21 @@ Ce script :
     - results.txt
     - results.csv
     - summary_for_oncologist.md
-Le tout sans dépendances cloud, sans email, sans automatisation.
 """
 
 import requests
 import csv
 import math
 from datetime import datetime
-
 # ------------------------------------------------------------
 # CONFIGURATION GÉOGRAPHIQUE
 # ------------------------------------------------------------
 
-# Position de Pontcharra (fixe)
-BASE_LOCATION = {"lat": 45.333, "lon": 5.866}
+BASE_LOCATION = {"lat": 45.333, "lon": 5.866}  # Pontcharra
 
-# Pays pertinents pour les essais TNBC
+# Europe élargie activée systématiquement
 ALLOWED_COUNTRIES = {
+    # Europe de l'Ouest
     "france": "FR",
     "belgium": "BE",
     "switzerland": "CH",
@@ -36,34 +34,70 @@ ALLOWED_COUNTRIES = {
     "italy": "IT",
     "spain": "ES",
     "netherlands": "NL",
-    "united kingdom": "GB"
-}
+    "united kingdom": "GB",
 
-# Centres européens pertinents (coordonnées réelles)
+    # Europe du Nord
+    "sweden": "SE",
+    "denmark": "DK",
+    "norway": "NO",
+    "finland": "FI",
+    "iceland": "IS",
+
+    # Europe de l'Est
+    "poland": "PL",
+    "czech republic": "CZ",
+    "hungary": "HU",
+    "romania": "RO",
+    "bulgaria": "BG",
+
+    # Balkans
+    "croatia": "HR",
+    "serbia": "RS",
+    "bosnia": "BA",
+    "montenegro": "ME",
+    "north macedonia": "MK",
+    "slovenia": "SI",
+
+    # Baltique
+    "estonia": "EE",
+    "latvia": "LV",
+    "lithuania": "LT"
+}
+# ------------------------------------------------------------
+# CENTRES EUROPÉENS PERTINENTS
+# ------------------------------------------------------------
+
 CENTERS = [
+    # France
     ("Gustave Roussy, Villejuif", "France", 48.792, 2.357),
     ("Institut Curie, Paris", "France", 48.840, 2.315),
     ("Centre Léon Bérard, Lyon", "France", 45.748, 4.855),
     ("IPC, Marseille", "France", 43.296, 5.369),
     ("Centre Antoine Lacassagne, Nice", "France", 43.703, 7.266),
 
+    # Belgique
     ("Institut Jules Bordet, Bruxelles", "Belgium", 50.835, 4.352),
     ("UZ Leuven, Leuven", "Belgium", 50.879, 4.700),
 
+    # Suisse
     ("CHUV Lausanne", "Switzerland", 46.521, 6.632),
     ("HUG Genève", "Switzerland", 46.201, 6.145),
 
+    # Allemagne
     ("Charité, Berlin", "Germany", 52.520, 13.405),
 
+    # Italie
     ("Istituto Europeo di Oncologia, Milan", "Italy", 45.462, 9.190),
 
+    # Espagne
     ("Hospital Clinic Barcelona", "Spain", 41.385, 2.173),
 
+    # Pays-Bas
     ("Netherlands Cancer Institute, Amsterdam", "Netherlands", 52.355, 4.912),
 
+    # Royaume-Uni
     ("Royal Marsden, London", "United Kingdom", 51.403, -0.168)
 ]
-
 # ------------------------------------------------------------
 # BIOMARQUEURS ET PONDÉRATIONS
 # ------------------------------------------------------------
@@ -72,7 +106,6 @@ WEIGHT_NECTIN4 = 50.0
 WEIGHT_PHASE = 30.0
 WEIGHT_COUNTRY = 20.0
 
-# Bonus biomarqueurs détectés dans le texte
 BONUS_KEYWORDS = {
     "brca1": 8.0, "brca2": 8.0,
     "pd-l1": 6.0, "pdl1": 6.0,
@@ -83,11 +116,6 @@ BONUS_KEYWORDS = {
     "ntrk": 6.0, "fgfr": 4.0, "met": 4.0,
     "hrd": 3.0, "ar": 2.0, "tp53": 2.0
 }
-
-# ------------------------------------------------------------
-# FONCTIONS UTILITAIRES
-# ------------------------------------------------------------
-
 def safe_get_list_field(obj, key):
     """Retourne toujours une liste, même si l’API renvoie une string."""
     v = obj.get(key, "")
@@ -106,14 +134,12 @@ def nearest_center_distance(country_name):
     """Trouve le centre le plus proche de Pontcharra dans le pays donné."""
     best = (None, 99999.0)
 
-    # Si le pays correspond à un centre, on cherche dans ce pays
     for name, ctry, lat, lon in CENTERS:
         if ctry.lower() == country_name.lower():
             d = haversine(BASE_LOCATION["lat"], BASE_LOCATION["lon"], lat, lon)
             if d < best[1]:
                 best = (name, d)
 
-    # Sinon, on prend le centre le plus proche tous pays confondus
     if best[0] is None:
         for name, ctry, lat, lon in CENTERS:
             d = haversine(BASE_LOCATION["lat"], BASE_LOCATION["lon"], lat, lon)
@@ -121,11 +147,6 @@ def nearest_center_distance(country_name):
                 best = (name, d)
 
     return best
-
-# ------------------------------------------------------------
-# FETCH ClinicalTrials.gov
-# ------------------------------------------------------------
-
 def fetch_clinicaltrials():
     """Récupère les essais TNBC depuis ClinicalTrials.gov."""
     url = (
@@ -143,13 +164,7 @@ def fetch_clinicaltrials():
         print("Erreur JSON ClinicalTrials.gov")
         print(r.text[:500])
         return []
-
-# ------------------------------------------------------------
-# SCORING
-# ------------------------------------------------------------
-
 def phase_score(phase_text):
-    """Score selon la phase de l’essai."""
     p = (phase_text or "").lower()
     if "phase 2" in p: return 1.0
     if "phase 1" in p: return 0.6
@@ -157,24 +172,19 @@ def phase_score(phase_text):
     return 0.5
 
 def country_score(country_text):
-    """Score selon le pays."""
     c = (country_text or "").lower()
     if c == "france": return 1.0
     if c in ALLOWED_COUNTRIES: return 0.8
     return 0.5
 
 def compute_score_and_flags(trial):
-    """Analyse biomarqueurs + phase + pays → score final."""
     text = " ".join(
         safe_get_list_field(trial, "BriefTitle") +
         safe_get_list_field(trial, "Condition") +
         safe_get_list_field(trial, "BriefSummary")
     ).lower()
 
-    # Détection NECTIN4
     nectin4_flag = 1.0 if "nectin4" in text else 0.0
-
-    # Détection biomarqueurs bonus
     flags = {k: (k in text) for k in BONUS_KEYWORDS}
 
     phase = safe_get_list_field(trial, "Phase")[0]
@@ -190,13 +200,7 @@ def compute_score_and_flags(trial):
     score = round(((base_raw + bonus) / max_possible) * 100, 1)
 
     return score, flags
-
-# ------------------------------------------------------------
-# NORMALISATION
-# ------------------------------------------------------------
-
 def normalize_trial(t):
-    """Transforme un essai en structure uniforme."""
     id_ = safe_get_list_field(t, "NCTId")[0]
     title = safe_get_list_field(t, "BriefTitle")[0]
     phase = safe_get_list_field(t, "Phase")[0]
@@ -219,20 +223,14 @@ def normalize_trial(t):
         "flags": flags,
         "summary": summary
     }
-
-# ------------------------------------------------------------
-# FILTRAGE
-# ------------------------------------------------------------
-
 def filter_and_normalize(trials):
-    """Filtre TNBC + pays pertinents + normalise."""
     out = []
 
     for t in trials:
         country = safe_get_list_field(t, "LocationCountry")[0].lower()
 
-        # Filtre pays
-        if country not in ALLOWED_COUNTRIES and country != "france":
+        # Filtre pays : France + Europe élargie
+        if country != "france" and country not in ALLOWED_COUNTRIES:
             continue
 
         # Filtre TNBC
@@ -246,16 +244,9 @@ def filter_and_normalize(trials):
 
         out.append(normalize_trial(t))
 
-    # Tri : score décroissant puis distance croissante
     out.sort(key=lambda x: (-x["score"], x["distance_km"]))
     return out
-
-# ------------------------------------------------------------
-# EXPORT
-# ------------------------------------------------------------
-
 def save_results_txt(trials):
-    """Génère results.txt."""
     now = datetime.utcnow().isoformat(timespec='minutes') + "Z"
     with open("results.txt", "w", encoding="utf-8") as f:
         f.write(f"# Results generated {now}\n")
@@ -268,7 +259,6 @@ def save_results_txt(trials):
             )
 
 def save_results_csv(trials):
-    """Génère results.csv."""
     with open("results.csv", "w", newline='', encoding="utf-8") as csvfile:
         fieldnames = ["id", "score", "phase", "status", "country",
                       "distance_km", "nearest_center", "flags", "title", "summary"]
@@ -290,7 +280,6 @@ def save_results_csv(trials):
             })
 
 def generate_summary_for_oncologist(trials, top_n=5):
-    """Génère un résumé lisible pour un oncologue."""
     top = trials[:top_n]
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
@@ -313,11 +302,6 @@ def generate_summary_for_oncologist(trials, top_n=5):
                 f.write(f"- Biomarqueurs détectés : {', '.join(flags)}\n")
 
             f.write("\n")
-
-# ------------------------------------------------------------
-# MAIN
-# ------------------------------------------------------------
-
 def main():
     print("Fetching ClinicalTrials.gov...")
     trials = fetch_clinicaltrials()
