@@ -1,98 +1,370 @@
-# TNBC Clinical Trials Watcher  
-### Veille clinique automatisée — Europe élargie + biomarqueurs + historique
+TNBC Clinical Trials Watcher — Multi‑sources & Personalized Medical Cross‑Analysis
 
-![Status](https://img.shields.io/badge/status-active-brightgreen)
-![Python](https://img.shields.io/badge/python-3.10+-blue)
-![ClinicalTrials.gov](https://img.shields.io/badge/source-ClinicalTrials.gov-orange)
-![Europe](https://img.shields.io/badge/coverage-Europe%20élargie-purple)
-![TNBC](https://img.shields.io/badge/focus-TNBC-red)
-## 📌 Description
+Veille clinique avancée pour Céline — Europe élargie, USA, registres scientifiques, biomarqueurs & centres spécialisés
 
-**TNBC Clinical Trials Watcher** est un outil de veille clinique avancée permettant de :
+    
 
-- analyser automatiquement les essais cliniques TNBC (Triple Negative Breast Cancer),
-- couvrir **toute l’Europe élargie** (France + 30 pays),
-- intégrer **tous les centres européens pertinents** (plus de 80 centres),
-- détecter les biomarqueurs clés (NECTIN4, BRCA1/2, PD‑L1, PIK3CA, AKT1/2, TMB, MSI…),
-- calculer un **score de pertinence clinique**,
-- estimer la distance depuis **Pontcharra (Isère)** vers le centre le plus proche,
-- générer des fichiers de résultats exploitables,
-- conserver un **historique daté complet**,
-- identifier les **pays sans essais TNBC** à une date donnée.
+1. 🎯 Objectif du projet
 
-Ce projet est conçu pour fonctionner **dans GitHub Codespaces**, sans dépendances cloud, sans API payante, sans services externes.
-## 🚀 Fonctionnalités
+Le TNBC Clinical Trials Watcher est un système de veille clinique avancée conçu pour :
 
-### 🔍 Analyse des essais TNBC
-- Récupération automatique via ClinicalTrials.gov  
-- Filtrage TNBC intelligent (détection "triple", "tnbc")  
-- Extraction des phases, statuts, résumés, pays  
+identifier automatiquement les essais cliniques pertinents pour Céline,
 
-### 🌍 Europe élargie (activée en permanence)
-Pays inclus :  
-France, Belgique, Suisse, Allemagne, Italie, Espagne, Pays‑Bas, Royaume‑Uni,  
-Suède, Danemark, Norvège, Finlande, Islande,  
-Pologne, Tchéquie, Hongrie, Roumanie, Bulgarie,  
-Croatie, Serbie, Bosnie, Monténégro, Macédoine du Nord, Slovénie,  
-Estonie, Lettonie, Lituanie.
+croiser ses données médicales personnelles (biomarqueurs, traitements, toxicités, évolution, contraintes),
 
-### 🏥 Centres européens complets (80+ centres)
-Tous les centres majeurs d’oncologie sont intégrés, avec coordonnées GPS exactes et tri automatique.
+interroger un ensemble très large de sources cliniques internationales,
 
-### 🧬 Scoring biomarqueurs
-Pondérations :
-- **NECTIN4** (pondération maximale)
-- Phase de l’essai
-- Pays
-- Bonus biomarqueurs (BRCA1/2, PD‑L1, PIK3CA, AKT1/2, TMB, MSI, HER2, NTRK, FGFR, MET…)
+fusionner, normaliser, filtrer et scorer les essais,
 
-### 📁 Export automatique
-- `results.txt`
-- `results.csv`
-- `summary_for_oncologist.md`
+produire des exports professionnels pour les oncologues,
 
-### 🕒 Historique daté
-Chaque exécution génère :
-- `history/YYYY-MM-DD_results.txt`
-- `history/YYYY-MM-DD_summary.md`
-- `history/YYYY-MM-DD_empty_countries.txt`
+maintenir un historique daté,
 
-### 📉 Log cumulatif des pays sans essais
-- `history/empty_log.txt`
-## 📂 Arborescence du projet
-watcher.py results.txt results.csv summary_for_oncologist.md history/ 2026-07-28_results.txt 2026-07-28_summary.md 2026-07-28_empty_countries.txt empty_log.txt
-## 🛠️ Installation (GitHub Codespaces)
+détecter les nouveaux essais,
 
-1. Ouvrir un Codespace dans GitHub.
-2. Ajouter le fichier `watcher.py` dans le projet.
-3. Installer la dépendance :pip install requests
-4. Lancer le script :python watcher.py
-5. Les fichiers générés apparaissent automatiquement dans le dossier du projet.
-## ▶️ Utilisation
+détecter les essais disparus,
 
-Lancer simplement :python watcher.py
-Le script :
-- récupère les essais,
-- filtre TNBC + Europe élargie,
-- calcule les scores,
-- génère les fichiers,
-- met à jour l’historique,
-- enregistre les pays sans essais TNBC.
-## 📄 Fichiers générés
+surveiller les pays sans essais TNBC,
 
-### Résultats principaux
-- `results.txt` — liste des essais triés par score  
-- `results.csv` — version tableur  
-- `summary_for_oncologist.md` — résumé lisible  
+prioriser les essais selon la pertinence médicale et la faisabilité géographique.
 
-### Historique daté
-- `history/YYYY-MM-DD_results.txt`  
-- `history/YYYY-MM-DD_summary.md`  
-- `history/YYYY-MM-DD_empty_countries.txt`  
+Ce projet ne remplace aucune décision médicale.Il vise à faire gagner du temps aux oncologues et à ne jamais rater un essai potentiellement utile.
 
-### Log cumulatif
-- `history/empty_log.txt`
-## 👤 Auteur
+2. 🧬 Croisement des données médicales de Céline
 
-Projet développé par **Michaël**,  
-dans le cadre d’une veille clinique avancée TNBC.
+(via medical_report.md)
+
+Le fichier medical_report.md est la source centrale pour personnaliser la veille clinique.
+
+Le watcher extrait automatiquement :
+
+🔬 Biomarqueurs
+
+NECTIN4
+
+BRCA1 / BRCA2
+
+PD‑L1
+
+PIK3CA
+
+AKT1 / AKT2
+
+HER2 / HER2‑low
+
+TMB
+
+MSI
+
+NTRK
+
+FGFR
+
+MET
+
+HRD
+
+AR
+
+TP53
+
+💊 Traitements déjà reçus
+
+chimiothérapie
+
+immunothérapie
+
+ADC (ex : sacituzumab govitecan)
+
+thérapies ciblées
+
+radiothérapie
+
+⚠️ Toxicités / tolérance
+
+neuropathies
+
+toxicités hématologiques
+
+toxicités cardiaques
+
+fatigue sévère
+
+🩻 Imagerie / évolution
+
+progression
+
+stabilité
+
+réponse partielle
+
+nouvelles localisations métastatiques
+
+📅 Dates clés
+
+diagnostic
+
+rechute
+
+progression
+
+début / fin de traitement
+
+🧭 Contraintes personnelles
+
+distance maximale acceptable
+
+centres préférés
+
+centres à éviter
+
+fréquence des visites possible
+
+🏥 Centres déjà consultés
+
+Curie
+
+Gustave Roussy
+
+Léon Bérard
+
+IPC
+
+Lacassagne
+
+Grenoble
+
+3. 🔗 Logique de croisement (Céline ↔ essais ↔ sources)
+
+Le watcher croise :
+
+1. Les données médicales de Céline
+
+2. Les données des essais cliniques
+
+3. Les contraintes géographiques
+
+4. Les biomarqueurs
+
+5. Les lignes de traitement
+
+6. Les toxicités
+
+7. Les sources multiples (14 sources)
+
+Pour produire un score de pertinence personnalisé.
+
+4. 🌍 Sources interrogées (14 sources)
+
+🟩 Déjà intégrées
+
+ClinicalTrials.gov (API JSON + fallback)
+
+EUCTR (scraping HTML + fallback)
+
+🟦 Intégrables immédiatement (faisables techniquement)
+
+CTIS (EU Clinical Trials Information System)
+
+INCa (France)
+
+AccessTrial (France)
+
+Centres français (Curie, GR, Léon Bérard, IPC, Lacassagne…)
+
+MBC Alliance (API JSON)
+
+BreastCancerTrials.org
+
+LBBC Trial Finder
+
+🟧 Veille scientifique proactive
+
+PubMed
+
+ESMO
+
+ASCO
+
+🟪 Bonus (optionnel)
+
+WHO ICTRP
+
+NIH RePORTER
+
+5. 🧠 Scoring personnalisé (médical + géographique + source)
+
+Le score final est :
+
+Score = Biomarqueurs + Phase + Pays + Distance + Source + Compatibilité_médicale
+
+🔬 Pondération biomarqueurs
+
+NECTIN4 → +50
+
+BRCA → +20
+
+PD‑L1 → +15
+
+HER2‑low → +10
+
+PIK3CA / AKT → +10
+
+TMB / MSI → +8
+
+NTRK / FGFR / MET → +8
+
+🧪 Pondération phase
+
+Phase II → +30
+
+Phase I → +20
+
+Phase III → +10 (selon contexte TNBC)
+
+🌍 Pondération pays
+
+France → +20
+
+Europe élargie → +15
+
+USA → +10
+
+📍 Distance
+
+< 100 km → +20
+
+100–300 km → +10
+
+300 km → +5
+
+🧬 Compatibilité médicale
+
+évite les molécules toxiques si toxicités
+
+évite les taxanes si neuropathies
+
+évite les anthracyclines si toxicité cardiaque
+
+priorise les essais ciblés biomarqueurs
+
+6. 🏗️ Architecture technique (modulaire PRO)
+
+watcher/
+│
+├── watcher.py                # Point d'entrée principal
+│
+├── sources/                  # Tous les fetchers multi-sources
+│   ├── clinicaltrials.py     # ClinicalTrials.gov (API JSON + fallback)
+│   ├── euctr.py              # EUCTR (HTML scraping + fallback)
+│   ├── ctis.py               # CTIS (HTML scraping)
+│   ├── inca.py               # INCa (HTML scraping)
+│   ├── accesstrial.py        # AccessTrial (API JSON)
+│   ├── centers_france.py     # Centres français (HTML scraping)
+│   ├── mbc_alliance.py       # MBC Alliance (API JSON)
+│   ├── breastcancertrials.py # BreastCancerTrials (HTML scraping)
+│   ├── lbbc.py               # LBBC Trial Finder (HTML scraping)
+│   ├── pubmed.py             # PubMed (scraping ciblé)
+│   ├── esmo.py               # ESMO abstracts (scraping)
+│   ├── asco.py               # ASCO abstracts (scraping)
+│
+├── merge.py                  # Fusion multi-sources + déduplication
+├── normalize.py              # Normalisation des champs essais
+├── scoring.py                # Scoring biomarqueurs + phase + pays + source
+├── geography.py              # Centres européens + distances + Europe élargie
+├── export.py                 # TXT, CSV, JSON, résumé oncologue
+├── history.py                # Historique daté + log des pays sans essais
+├── profile_celine.py         # Profil médical de Céline (extraction automatique)
+├── medical_report.md         # Données médicales de Céline
+
+7. 📂 Fichiers générés
+
+Résultats
+
+results.txt
+
+results.csv
+
+results.json
+
+summary_for_oncologist.md
+
+Historique
+
+history/YYYY-MM-DD_results.txt
+
+history/YYYY-MM-DD_summary.md
+
+history/YYYY-MM-DD_empty_countries.txt
+
+history/empty_log.txt
+
+8. 🧭 Workflow complet
+
+Charger medical_report.md
+
+Extraire biomarqueurs, traitements, toxicités
+
+Interroger 14 sources cliniques
+
+Fusionner les essais
+
+Normaliser les champs
+
+Filtrer TNBC
+
+Appliquer scoring personnalisé
+
+Trier par pertinence
+
+Exporter TXT / CSV / JSON / MD
+
+Mettre à jour l’historique
+
+Détecter nouveaux essais
+
+Détecter essais disparus
+
+Log des pays sans essais TNBC
+
+9. 🧭 Roadmap
+
+Intégration CTIS
+
+Intégration INCa
+
+Intégration AccessTrial
+
+Intégration centres français
+
+Intégration MBC Alliance
+
+Intégration BreastCancerTrials
+
+Intégration LBBC
+
+Intégration PubMed / ESMO / ASCO
+
+Mode “diff J‑1”
+
+Mode “essais disparus”
+
+Export PDF
+
+Interface web minimaliste
+
+10. 👤 Auteur & contexte
+
+Projet conçu par Michaël,pour Céline,dans le cadre d’une veille clinique TNBC avancée,avec l’objectif de ne jamais rater un essai pertinent,et de faire gagner du temps aux oncologues.
+
+11. 🔗 Liens internes (Guided Links)
+
+Profil Céline
+
+Sources cliniques
+
+Architecture du watcher
+
+Scoring biomarqueurs
+
+Historique
