@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Veille clinique TNBC — Céline</title>
+
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --accent: #ff5a5a;
+      --accent-soft: #ffecec;
+      --text: #222;
+      --muted: #666;
+    }
+    [data-theme="dark"] {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --accent: #ff7a7a;
+      --accent-soft: #2a1a1a;
+      --text: #f5f5f5;
+      --muted: #aaaaaa;
+    }
+    body {
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      scroll-behavior: smooth;
+    }
+    header {
+      background: linear-gradient(135deg, #ff7a7a, #ffb6b6);
+      padding: 32px 20px;
+      text-align: center;
+      color: #fff;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2.2em;
+      font-weight: 700;
+    }
+    header p {
+      margin-top: 8px;
+      font-size: 0.95em;
+    }
+    nav {
+      background: var(--card);
+      padding: 10px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+    nav a {
+      text-decoration: none;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.9em;
+      padding-bottom: 2px;
+    }
+    nav a.active {
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
+    }
+    .theme-toggle {
+      margin-left: auto;
+      cursor: pointer;
+      border: none;
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8em;
+    }
+    section {
+      padding: 32px 20px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h2 {
+      color: var(--accent);
+      margin-bottom: 10px;
+      font-size: 1.5em;
+    }
+    h3 {
+      margin-top: 18px;
+      margin-bottom: 6px;
+      font-size: 1.1em;
+      color: var(--text);
+    }
+    .card {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 0.95em;
+    }
+    p {
+      color: var(--muted);
+      font-size: 0.95em;
+      margin: 6px 0;
+    }
+    #back-to-top {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      display: none;
+      font-size: 1.2em;
+    }
+    #back-to-top.show {
+      display: block;
+    }
+    #dossier-complet-toggle {
+      border: none;
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.85em;
+      margin-top: 10px;
+    }
+    #dossier-complet {
+      margin-top: 12px;
+      display: none;
+      max-height: 600px;
+      overflow-y: auto;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+    footer {
+      text-align: center;
+      padding: 18px;
+      background: #ffecec;
+      color: #444;
+      font-size: 0.85em;
+      margin-top: 32px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Veille clinique TNBC — Céline</h1>
+    <p>Outil de veille multi‑sources centré sur le profil réel de Céline, pour aider l’oncologue à ne pas manquer un essai pertinent.</p>
+  </header>
+
+  <nav>
+    <a href="#outil-intro">L’outil</a>
+    <a href="#outil-fonctionnement">Fonctionnement</a>
+    <a href="#outil-sources">Sources</a>
+    <a href="#outil-utilite">Utilité pour l’oncologue</a>
+    <a href="#dossier-synthese">Dossier Céline (synthèse)</a>
+    <a href="#dossier-complet-section">Dossier complet</a>
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 / ☀️</button>
+  </nav>
+
+  <!-- PARTIE A : L’OUTIL -->
+
+  <section id="outil-intro">
+    <div class="card">
+      <h2>Pourquoi cet outil existe</h2>
+      <p>
+        Céline est suivie pour un TNBC métastatique agressif, avec plusieurs lignes de traitement et une exposition à des essais cliniques.
+        Dans ce contexte, la recherche d’un essai pertinent est chronophage, fragmentée, et dépend de multiples registres.
+      </p>
+      <p>
+        Cet outil a été conçu pour une seule raison :
+        <strong>organiser la veille clinique autour du profil réel de Céline</strong>,
+        afin que l’oncologue puisse, en consultation, disposer rapidement d’une liste courte d’essais potentiellement pertinents,
+        sans que l’outil ne se substitue à sa décision médicale.
+      </p>
+    </div>
+  </section>
+
+  <section id="outil-fonctionnement">
+    <div class="card">
+      <h2>Comment fonctionne l’outil</h2>
+      <h3>1. Collecte multi‑sources</h3>
+      <p>L’outil interroge automatiquement plusieurs registres d’essais cliniques :</p>
+      <ul>
+        <li>Registres internationaux : ClinicalTrials.gov, EUCTR, WHO ICTRP.</li>
+        <li>Registres européens / français : CTIS, INCa, bases des grands centres (Curie, Gustave Roussy, Léon Bérard, IPC, Lacassagne…).</li>
+        <li>Plateformes dédiées au cancer du sein : MBC Alliance, BreastCancerTrials.org, LBBC Trial Finder.</li>
+        <li>Sources scientifiques : PubMed, ESMO, ASCO (pour repérer des essais en cours ou des programmes de phase I/II).</li>
+      </ul>
+
+      <h3>2. Filtrage par profil de Céline</h3>
+      <p>Les essais récupérés sont filtrés selon des critères directement issus du dossier de Céline :</p>
+      <ul>
+        <li><strong>Type de tumeur :</strong> TNBC métastatique.</li>
+        <li><strong>Biomarqueurs :</strong> NECTIN4 (gain), PIK3R1, TP53, HER2‑low, TMB, MSI.</li>
+        <li><strong>Lignes de traitement déjà reçues :</strong> néoadjuvant, ADC anti‑TROP2, capécitabine, Enhertu, éribuline.</li>
+        <li><strong>Toxicités :</strong> neutropénie grade 4, pyélonéphrite, cardiotoxicité potentielle.</li>
+        <li><strong>Contraintes géographiques :</strong> France, Europe, centres déjà impliqués.</li>
+      </ul>
+
+      <h3>3. Scoring de pertinence</h3>
+      <p>Chaque essai est ensuite “scoré” selon :</p>
+      <ul>
+        <li>Adéquation biomarqueurs (ex. NECTIN4, PI3K/AKT, immuno TNBC).</li>
+        <li>Phase de l’essai (I, II, III) et type (ADC, immuno, ciblé).</li>
+        <li>Pays / distance / faisabilité pratique.</li>
+        <li>Compatibilité avec les lignes déjà reçues et les toxicités.</li>
+      </ul>
+
+      <h3>4. Production d’une synthèse lisible</h3>
+      <p>
+        L’outil ne propose pas de traitement, mais produit une
+        <strong>liste courte d’essais à regarder en priorité</strong>,
+        accompagnée de quelques éléments clés (biomarqueur ciblé, phase, centre, pays).
+        Cette liste est destinée à être discutée en RCP ou en consultation, jamais à être appliquée automatiquement.
+      </p>
+    </div>
+  </section>
+
+  <section id="outil-sources">
+    <div class="card">
+      <h2>Sources de recherche utilisées</h2>
+      <p>Les principales sources interrogées peuvent inclure :</p>
+      <ul>
+        <li><strong>ClinicalTrials.gov</strong> — registre américain majeur, très riche en essais internationaux.</li>
+        <li><strong>EUCTR / CTIS</strong> — registres européens des essais cliniques.</li>
+        <li><strong>INCa</strong> — essais français labellisés.</li>
+        <li><strong>WHO ICTRP</strong> — registre global des essais.</li>
+        <li><strong>MBC Alliance, BreastCancerTrials.org, LBBC Trial Finder</strong> — plateformes dédiées au cancer du sein métastatique.</li>
+        <li><strong>Centres français</strong> (Curie, Gustave Roussy, Léon Bérard, IPC, Lacassagne…) — essais de phase précoce et programmes spécifiques.</li>
+        <li><strong>PubMed, ESMO, ASCO</strong> — pour repérer des essais en cours ou des programmes de phase I/II non encore largement référencés.</li>
+      </ul>
+      <p>
+        L’objectif n’est pas d’être exhaustif, mais de couvrir les principales sources
+        où un essai TNBC pertinent pourrait apparaître, puis de les filtrer selon le profil de Céline.
+      </p>
+    </div>
+  </section>
+
+  <section id="outil-utilite">
+    <div class="card">
+      <h2>Ce que l’outil fait gagner à l’oncologue</h2>
+      <h3>Gain de temps</h3>
+      <p>
+        La veille multi‑sources est déjà faite, filtrée et triée.
+        L’oncologue n’a pas à repartir de zéro sur chaque registre.
+      </p>
+
+      <h3>Vision personnalisée</h3>
+      <p>
+        Les essais sont présentés en fonction du profil réel de Céline :
+        biomarqueurs, lignes antérieures, toxicités, géographie.
+      </p>
+
+      <h3>Support à la discussion, pas à la décision</h3>
+      <p>
+        L’outil ne prescrit rien, ne recommande rien.
+        Il organise l’information pour faciliter la discussion en consultation ou en RCP.
+      </p>
+
+      <h3>Réduction du risque de “manquer” un essai</h3>
+      <p>
+        En croisant plusieurs sources et en filtrant par profil, l’outil réduit le risque
+        qu’un essai pertinent passe inaperçu simplement faute de temps ou de visibilité.
+      </p>
+    </div>
+  </section>
+
+  <!-- PARTIE B : SYNTHÈSE DU DOSSIER DE CÉLINE -->
+
+  <section id="dossier-synthese">
+    <div class="card">
+      <h2>Dossier médical de Céline — Synthèse regroupée</h2>
+
+      <h3>Résumé exécutif</h3>
+      <p>
+        Carcinome mammaire infiltrant non spécifique, triple négatif (TNBC), grade III, très prolifératif (Ki‑67 élevé).
+        Profil moléculaire : mutation inactivatrice PIK3R1 (LOH), mutation inactivatrice TP53 (gain unidisomie),
+        gain NECTIN4 (CN=4), TMB 9.6 mut/Mb, MSI stable. HER2‑low (1+), ER ~5%, PR 0%.
+      </p>
+
+      <h3>Chronologie thérapeutique principale</h3>
+      <ul>
+        <li>2024–2025 : néoadjuvant carboplatine/paclitaxel + pembrolizumab, puis AC + pembrolizumab, chirurgie, radiothérapie.</li>
+        <li>Juin 2025 → Janvier 2026 : essai MK‑2870‑012 (ADC anti‑TROP2) + pembrolizumab.</li>
+        <li>Février → Mai 2026 : capécitabine, progression au TEP.</li>
+        <li>Juin 2026 : Enhertu (trastuzumab deruxtecan), progression au TEP 16/07/2026.</li>
+        <li>Fin juillet 2026 : éribuline (ligne actuelle).</li>
+      </ul>
+
+      <h3>Imagerie récente</h3>
+      <ul>
+        <li>TEP 25/02/2026 : foyers mammaires hypermétaboliques, nodule apical LSG.</li>
+        <li>TEP 13/05/2026 : progression mammaire et pulmonaire.</li>
+        <li>TEP 16/07/2026 : progression pulmonaire (nodule 29 mm, SUVmax 22.5), adénopathie médiastinale, progression mammaire discrète.</li>
+      </ul>
+
+      <h3>Toxicités majeures</h3>
+      <ul>
+        <li>Neutropénie grade 4 et neutropénie fébrile sous ADC anti‑TROP2.</li>
+        <li>Pyélonéphrite début juillet 2026.</li>
+        <li>Surveillance cardiologique (anthracyclines, Enhertu).</li>
+      </ul>
+
+      <h3>Pistes d’essais (factuelles)</h3>
+      <ul>
+        <li>ADC ciblant NECTIN4 (gain NECTIN4).</li>
+        <li>Essais PI3K / AKT (mutation PIK3R1).</li>
+        <li>Essais immuno‑combinés TNBC.</li>
+        <li>Essais de phase I/II multi‑lignes.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PARTIE C : DOSSIER COMPLET INTÉGRAL, HTML PROPRE -->
+
+  <section id="dossier-complet-section">
+    <div class="card">
+      <h2>Dossier médical complet médical complet — Version intégrale</h2>
+      <p style="font-size:0.9em;color:var(--muted);">
+        Cette section reprend intégralement le contenu du fichier <code>medical_report.md</code>,
+        structuré en HTML pour une lecture clinique. Elle est masquée par défaut.
+      </p>
+      <button id="dossier-complet-toggle">Afficher le dossier complet</button>
+
+      <div id="dossier-complet">
+        <h3>1. Résumé exécutif</h3>
+        <p><strong>Diagnostic principal :</strong> Carcinome mammaire infiltrant non spécifique, triple négatif (TNBC), grade III, très prolifératif (Ki‑67 élevé).</p>
+        <p><strong>Profil moléculaire clé (ProfiLER 27/05/2026) :</strong> mutation inactivatrice PIK3R1 (avec LOH), mutation inactivatrice TP53 (gain unidisomie), gain NECTIN4 (CN=4). TMB = 9.6 mut/Mb ; MSI stable.</p>
+        <p><strong>Statut HER2 / récepteurs hormonaux :</strong> HER2 faible (score 1+), ER ~5%, PR 0%.</p>
+        <p><strong>Sites métastatiques actuels (juillet 2026) :</strong> poumon (nodule apical LSG), adénopathie médiastinale para‑aortique, progression mammaire locale gauche.</p>
+        <p><strong>Historique thérapeutique majeur :</strong> néoadjuvant carboplatine/paclitaxel + pembrolizumab → AC + pembrolizumab → chirurgie + radiothérapie ; essai MK‑2870‑012 (ADC anti‑TROP2) ; capécitabine ; Enhertu ; éribuline.</p>
+        <p><strong>Objectif du dossier :</strong> synthèse exploitable en consultation, aide à la recherche d’essais NECTIN4, PI3K/AKT, immuno, ADC.</p>
+
+        <h3>2. Identification et équipes de soins</h3>
+        <p><strong>Nom :</strong> Céline DOUY‑ZORGNOTTI (née ZORGNOTTI), 23/01/1983.</p>
+        <p><strong>Centres :</strong> GHM Grenoble (Dr Elise Bonnet), CLB Lyon (Dr Pierre Etienne Heudel).</p>
+        <p><strong>Équipes impliquées :</strong> oncologie médicale, cardiologie, dermatologie, nutrition, recherche clinique.</p>
+
+        <h3>3. Données histo‑pathologiques</h3>
+        <h4>Biopsie mammaire (09/03/2026)</h4>
+        <p>Carcinome infiltrant non spécifique, grade Elston‑Ellis III, Ki‑67 = 70%, ER 5%, PR 0%, AR 0%, HER2 1+ (faible), TILs 10%.</p>
+        <h4>Pièce opératoire</h4>
+        <p>Tumorectomie sein gauche + curage axillaire (ypT1c pN1a, 1/18), RCB III, reliquat tumoral 17 mm, macrométastase ganglionnaire 2,8 mm avec extension extracapsulaire.</p>
+
+        <h3>4. Profil moléculaire détaillé (ProfiLER)</h3>
+        <p><strong>TMB :</strong> 9.6 mut/Mb ; <strong>MSI :</strong> stable.</p>
+        <p><strong>Mutations :</strong> PIK3R1 inactivatrice (LOH), TP53 inactivatrice (gain unidisomie).</p>
+        <p><strong>CNV :</strong> gain NECTIN4 (CN=4), profil diploïde sans amplifications majeures.</p>
+        <p><strong>Implications :</strong> NECTIN4 pour ADC ciblés ; PIK3R1 pour essais PI3K/AKT ; TP53 pour certains essais ciblés.</p>
+
+        <h3>5. Chronologie complète (2024 → 07/2026)</h3>
+        <h4>Juillet 2024 — Découverte</h4>
+        <p>Lésion cT2cN1 sein gauche, TNBC, grade III, ER 2%, PR 5%, HER2 1+, Ki‑67 initial ~25%.</p>
+        <h4>Août 2024 → Janvier 2025 — Néoadjuvant</h4>
+        <p>Carboplatine + Paclitaxel + Pembrolizumab, puis AC + Pembrolizumab ; tumorectomie + curage ; radiothérapie terminée le 15/05/2025.</p>
+        <h4>Juin 2025 → Janvier 2026 — Essai MK‑2870‑012</h4>
+        <p>ADC anti‑TROP2 + pembrolizumab ; neutropénie grade 4 et neutropénie fébrile.</p>
+        <h4>Février 2026 — Récidive métastatique</h4>
+        <p>Nodule apical LSG, récidive mammaire locale ; TEP 25/02/2026 montrant foyers mammaires hypermétaboliques et nodule apical.</p>
+        <h4>Février → Mai 2026 — Capécitabine</h4>
+        <p>Capécitabine ; TEP 13/05/2026 montrant progression mammaire et pulmonaire.</p>
+        <h4>Juin 2026 — Enhertu</h4>
+        <p>Trastuzumab deruxtecan débuté le 10/06/2026 ; TEP 16/07/2026 montrant progression pulmonaire, ganglionnaire, mammaire.</p>
+        <h4>Fin juillet 2026 — Éribuline</h4>
+        <p>Mise en place d’Éribuline (Halaven) suite à progression sous Enhertu.</p>
+
+        <h3>6. Imagerie — comptes rendus clés</h3>
+        <p>TEP 25/02/2026 : foyers mammaires hypermétaboliques, nodule apical LSG 8×7.5 mm, SUVmax 12.1.</p>
+        <p>TEP 13/05/2026 : progression mammaire confluente, nodule apical 17 mm, SUVmax 15.2.</p>
+        <p>TEP 16/07/2026 : nodule apical 29 mm, SUVmax 22.5 ; adénopathie médiastinale para‑aortique 16 mm, SUVmax 21.5 ; progression mammaire discrète.</p>
+
+        <h3>7. Biologie et marqueurs tumoraux</h3>
+        <p>NFS, fonction rénale et hépatique globalement conservées ; CA15‑3 faible (6 → 7.2 U/mL) ; génotypage DPD prescrit avant capécitabine.</p>
+
+        <h3>8. Événements intercurrents et toxicités</h3>
+        <p>Neutropénie grade 4 et neutropénie fébrile sous MK‑2870 ; pyélonéphrite début juillet 2026 ; surveillance cardiologique ; douleurs mammaires, toux, asthénie, troubles de mémoire, lymphœdème modéré.</p>
+
+        <h3>9. Essais cliniques évalués et pistes</h3>
+        <p>MK‑2870‑012 déjà reçu ; IPH4502 (NECTIN4) évoqué mais sans place disponible ; pistes ADC NECTIN4, PI3K/AKT, immuno‑combinés, phase I/II multi‑lignes.</p>
+
+        <h3>10. Critères d’éligibilité et éléments manquants</h3>
+        <p>Favorables : TNBC, HER2‑low, gain NECTIN4, mutation PIK3R1, PS=1, fonction rénale/hépatique conservée.</p>
+        <p>À vérifier : nombre de lignes (≥4), neutropénie sévère, statut BRCA, PD‑L1, bilan cardiaque, NGS complet.</p>
+
+        <h3>11. Documents sources</h3>
+        <p>RCP Moléculaire CLB, consultation CLB, comptes rendus GHM, biopsie CyPath, TEP‑TDM.</p>
+
+        <h3>12. Recommandations organisationnelles</h3>
+        <p>Joindre NGS complet, EMG, BRCA, PD‑L1, bilan cardiaque ; prioriser NECTIN4 et PI3K/AKT ; préparer fiche 1‑page ; documenter infections et neutropénie ; contacter centres pour places en phase I/II.</p>
+
+        <h3>13. Historique des versions</h3>
+        <p>v1.0 — 27/07/2026.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Projet conçu par Michaël — pour Céline — pour soutenir la veille clinique, sans jamais remplacer la décision de l’oncologue.
+  </footer>
+
+  <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme') || 'light';
+      html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+    }
+
+    function setActiveNav() {
+      const sections = document.querySelectorAll('section');
+      const navLinks = document.querySelectorAll('nav a');
+      let currentId = null;
+      sections.forEach(sec => {
+        const rect = sec.getBoundingClientRect();
+        if (rect.top <= 80 && rect.bottom >= 80) currentId = sec.id;
+      });
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + currentId);
+      });
+    }
+
+    function handleScroll() {
+      setActiveNav();
+      const btn = document.getElementById('back-to-top');
+      if (window.scrollY > 300) btn.classList.add('show');
+      else btn.classList.remove('show');
+    }
+
+    function initAnimations() {
+      const cards = document.querySelectorAll('.card');
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) e.target.classList.add('visible');
+        });
+      }, { threshold: 0.1 });
+      cards.forEach(c => observer.observe(c));
+    }
+
+    function initDossierToggle() {
+      const btn = document.getElementById('dossier-complet-toggle');
+      const bloc = document.getElementById('dossier-complet');
+      btn.addEventListener('click', () => {
+        const visible = bloc.style.display === 'block';
+        bloc.style.display = visible ? 'none' : 'block';
+        btn.textContent = visible ? 'Afficher le dossier complet' : 'Masquer le dossier complet';
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initAnimations();
+      initDossierToggle();
+      setActiveNav();
+      window.addEventListener('scroll', handleScroll);
+    });
+  </script>
+</body>
+</html>
