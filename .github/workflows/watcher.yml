@@ -14,6 +14,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,8 +23,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests
-          pip install beautifulsoup4
+          pip install --upgrade pip
+          pip install requests beautifulsoup4
 
       - name: Run watcher
         run: |
@@ -33,9 +34,20 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add results.json results.txt results.csv summary_for_oncologist.md alerts.log
+          git add results.json results.txt results.csv summary_for_oncologist.md alerts.log || true
           git commit -m "Update watcher results" || echo "No changes to commit"
 
-      - name: Push results
+      - name: Fetch remote main for safe rebase
         run: |
-          git push
+          git fetch origin main
+
+      - name: Rebase on remote main (safe)
+        run: |
+          # Try to rebase runner commit on top of remote main.
+          # If rebase fails due to conflicts, abort and exit 0 so workflow doesn't force-push.
+          git rebase origin/main || (git rebase --abort && echo "Rebase failed; aborting push" && exit 0)
+
+      - name: Push results (force-safe)
+        run: |
+          # Use --force-with-lease to avoid overwriting remote work unintentionally.
+          git push --force-with-lease origin HEAD:main
