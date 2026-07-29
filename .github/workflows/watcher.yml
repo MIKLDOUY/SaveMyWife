@@ -33,4 +33,11 @@ jobs:
           git config user.email "github-actions@github.com"
           git add results.json results.txt results.csv summary_for_oncologist.md alerts.log
           git commit -m "Update watcher results" || echo "No changes to commit"
+
+      - name: Pull latest changes before pushing
+        run: |
+          git pull --rebase
+
+      - name: Push results
+        run: |
           git push
