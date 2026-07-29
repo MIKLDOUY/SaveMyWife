@@ -17,13 +17,29 @@ PROFILE = {
 }
 
 def fetch_clinicaltrials():
-    url = (
-        "https://clinicaltrials.gov/api/query/study_fields?"
-        "expr=triple+negative+breast+cancer&"
-        "fields=NCTId,BriefTitle,Condition,OverallStatus,Phase,LocationCountry&"
-        "min_rnk=1&max_rnk=200&fmt=json"
-    )
-    r = requests.get(url, timeout=15)
+    url = "https://clinicaltrials.gov/api/query/study_fields"
+    params = {
+        "expr": "triple negative breast cancer",
+        "fields": "NCTId,BriefTitle,Condition,LocationCountry,Phase,OverallStatus",
+        "min_rnk": 1,
+        "max_rnk": 100,
+        "fmt": "json"
+    }
+    headers = {"User-Agent": "SaveMyWife-watcher/1.0"}
+
+    r = requests.get(url, params=params, headers=headers, timeout=30)
+
+    print("STATUS:", r.status_code)
+    print("HEADERS:", r.headers)
+    print("RAW RESPONSE (first 500 chars):")
+    print(r.text[:500])
+
+    try:
+        return r.json().get("StudyFieldsResponse", {}).get("StudyFields", [])
+    except Exception as e:
+        print("JSON ERROR:", e)
+        return []
+
     return r.json().get("StudyFieldsResponse", {}).get("StudyFields", [])
 
 def fetch_accesstrial():
