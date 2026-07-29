@@ -50,7 +50,7 @@ def extract_profile(text):
     return profile
 
 ###############################################
-# 3. Interroger ClinicalTrials.gov
+# 3. Interroger ClinicalTrials.gov (robuste)
 ###############################################
 
 def fetch_clinicaltrials():
