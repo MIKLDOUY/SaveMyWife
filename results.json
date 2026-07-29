@@ -1,1 +1,17 @@
-[]
+{
+  "generated_at": "2026-07-29T08:41:56.685629+00:00",
+  "patient_profile": {
+    "diagnosis": "TNBC metastatic",
+    "biomarkers": [
+      "NECTIN4_gain",
+      "PIK3R1_mutation",
+      "TP53_mutation",
+      "HER2_low"
+    ],
+    "notes": [
+      "Profil TNBC métastatique avec biomarqueurs détectés."
+    ]
+  },
+  "trial_count": 0,
+  "trials": []
+}
