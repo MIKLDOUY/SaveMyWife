@@ -40,7 +40,7 @@ def fetch_clinicaltrials():
         print("JSON ERROR:", e)
         return []
 
-    return r.json().get("StudyFieldsResponse", {}).get("StudyFields", [])
+   
 
 def fetch_accesstrial():
     try:
