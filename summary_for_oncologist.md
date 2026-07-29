@@ -1,14 +1,14 @@
 # Synthèse pour l'oncologue
 
-**Généré le :** 2026-07-29 08:41 UTC
+**Généré le :** 2026-07-29 12:47 UTC
 
 ## Profil patient
 {
   "diagnosis": "TNBC metastatic",
   "biomarkers": [
-    "NECTIN4_gain",
-    "PIK3R1_mutation",
-    "TP53_mutation",
+    "NECTIN4",
+    "PIK3R1",
+    "TP53",
     "HER2_low"
   ],
   "notes": [
@@ -16,4 +16,4 @@
   ]
 }
 
-## Essais pertinents (multi-sources)
+## Essais pertinents (multi-sources, triés par score)
