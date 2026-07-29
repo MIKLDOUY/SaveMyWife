@@ -3,6 +3,7 @@ import json
 import re
 import requests
 from datetime import datetime, UTC
+from bs4 import BeautifulSoup
 
 MEDICAL_REPORT_PATH = "medical_report.md"
 RESULTS_JSON = "results.json"
@@ -10,6 +11,11 @@ RESULTS_TXT = "results.txt"
 RESULTS_CSV = "results.csv"
 SUMMARY_MD = "summary_for_oncologist.md"
 ALERTS_LOG = "alerts.log"
+
+###############################################
+# 1. Charger le dossier médical
+###############################################
+
 def load_medical_report():
     try:
         with open(MEDICAL_REPORT_PATH, "r", encoding="utf-8") as f:
@@ -17,6 +23,11 @@ def load_medical_report():
     except FileNotFoundError:
         print("ERROR: medical_report.md introuvable.")
         return ""
+
+###############################################
+# 2. Extraire le profil patient
+###############################################
+
 def extract_profile(text):
     profile = {
         "diagnosis": "TNBC metastatic",
@@ -38,6 +49,11 @@ def extract_profile(text):
     profile["notes"].append("Profil TNBC métastatique avec biomarqueurs détectés.")
 
     return profile
+
+###############################################
+# 3. ClinicalTrials.gov (API JSON robuste)
+###############################################
+
 def fetch_clinicaltrials():
     url = "https://clinicaltrials.gov/api/query/study_fields"
     params = {
@@ -49,10 +65,14 @@ def fetch_clinicaltrials():
     }
     headers = {"User-Agent": "SaveMyWife-watcher/1.0"}
 
-    r = requests.get(url, params=params, headers=headers, timeout=30)
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=30)
+    except Exception as e:
+        print("[ClinicalTrials] Request error:", e)
+        return []
 
-    print("STATUS:", r.status_code)
-    print("RAW RESPONSE (first 300 chars):")
+    print("STATUS (CT.gov):", r.status_code)
+    print("RAW RESPONSE CT.gov (first 300 chars):")
     print(r.text[:300])
 
     if r.status_code != 200:
@@ -66,7 +86,34 @@ def fetch_clinicaltrials():
         print("ERROR:", e)
         return []
 
-    return data.get("StudyFieldsResponse", {}).get("StudyFields", [])
+    trials = data.get("StudyFieldsResponse", {}).get("StudyFields", [])
+    normalized = []
+
+    for t in trials:
+        nct = t.get("NCTId", [""])[0]
+        title = t.get("BriefTitle", [""])[0]
+        cond = t.get("Condition", [])
+        country = t.get("LocationCountry", [])
+        phase = t.get("Phase", [""])[0]
+        status = t.get("OverallStatus", [""])[0]
+
+        normalized.append({
+            "source": "CT.gov",
+            "nct_id": nct,
+            "title": title,
+            "conditions": cond,
+            "countries": country,
+            "phase": phase,
+            "status": status
+        })
+
+    print(f"[ClinicalTrials] Parsed {len(normalized)} trials")
+    return normalized
+
+###############################################
+# 4. WHO ICTRP (HTML + BeautifulSoup)
+###############################################
+
 def fetch_who_ictrp():
     url = "https://trialsearch.who.int/TrialSearch/TrialSearch.aspx"
     params = {"cond": "triple negative breast cancer"}
@@ -77,52 +124,99 @@ def fetch_who_ictrp():
         print("[WHO ICTRP] Request error:", e)
         return []
 
+    print("STATUS (WHO ICTRP):", r.status_code)
+    print("RAW RESPONSE WHO (first 300 chars):")
+    print(r.text[:300])
+
     if r.status_code != 200:
         print("[WHO ICTRP] HTTP error:", r.status_code)
         return []
 
-    print("[WHO ICTRP] HTML response (first 300 chars):")
-    print(r.text[:300])
+    soup = BeautifulSoup(r.text, "html.parser")
+    trials = []
 
-    return []
+    # NOTE : ceci est un parsing générique, à ajuster selon le HTML réel.
+    # On cherche des lignes de tableau (<tr>) avec des colonnes (<td>).
+    for row in soup.find_all("tr"):
+        cols = [c.get_text(strip=True) for c in row.find_all("td")]
+        if len(cols) < 2:
+            continue
+
+        title = cols[0]
+        cond = cols[1]
+
+        if "breast" not in cond.lower():
+            continue
+
+        trials.append({
+            "source": "WHO ICTRP",
+            "nct_id": "",
+            "title": title,
+            "conditions": [cond],
+            "countries": [],
+            "phase": "",
+            "status": ""
+        })
+
+    print(f"[WHO ICTRP] Parsed {len(trials)} trials")
+    return trials
+
+###############################################
+# 5. EUCTR / INCa / CTIS — stubs prêts à compléter
+###############################################
+
 def fetch_euctr():
-    print("[EUCTR] Not implemented yet")
+    print("[EUCTR] TODO: implement real scraping/API")
     return []
 
 def fetch_inca():
-    print("[INCa] Not implemented yet")
+    print("[INCa] TODO: implement real scraping/API")
     return []
 
 def fetch_ctis():
-    print("[CTIS] Not implemented yet")
+    print("[CTIS] TODO: implement real scraping/API")
     return []
+
+###############################################
+# 6. Filtrer les essais pertinents
+###############################################
+
 def filter_trials(trials, profile):
     filtered = []
 
     for t in trials:
-        nct = t.get("NCTId", [""])[0]
-        title = t.get("BriefTitle", [""])[0]
-        cond = t.get("Condition", [])
-        country = t.get("LocationCountry", [])
-        phase = t.get("Phase", [""])[0]
-        status = t.get("OverallStatus", [""])[0]
+        title = t.get("title", "")
+        cond = t.get("conditions", [])
+        status = t.get("status", "")
+        phase = t.get("phase", "")
+        countries = t.get("countries", [])
+        nct = t.get("nct_id", "")
+        source = t.get("source", "unknown")
 
-        if status.lower() not in ["recruiting", "not yet recruiting"]:
+        # statut si disponible
+        if status and status.lower() not in ["recruiting", "not yet recruiting", ""]:
             continue
 
+        # condition sein
         if not any("breast" in c.lower() for c in cond):
             continue
 
         filtered.append({
+            "source": source,
             "nct_id": nct,
             "title": title,
             "conditions": cond,
-            "countries": country,
+            "countries": countries,
             "phase": phase,
             "status": status
         })
 
     return filtered
+
+###############################################
+# 7. Générer les fichiers de sortie
+###############################################
+
 def save_json(data):
     with open(RESULTS_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -130,14 +224,17 @@ def save_json(data):
 def save_txt(trials):
     with open(RESULTS_TXT, "w", encoding="utf-8") as f:
         for t in trials:
-            f.write(f"{t['nct_id']} - {t['title']}\n")
+            src = t.get("source", "unknown")
+            f.write(f"[{src}] {t['nct_id']} - {t['title']}\n")
 
 def save_csv(trials):
     with open(RESULTS_CSV, "w", encoding="utf-8") as f:
-        f.write("NCT ID,Title,Phase,Status,Countries\n")
+        f.write("Source,NCT ID,Title,Phase,Status,Countries\n")
         for t in trials:
             countries = ";".join(t["countries"])
-            f.write(f"{t['nct_id']},{t['title']},{t['phase']},{t['status']},{countries}\n")
+            f.write(
+                f"{t.get('source','')},{t['nct_id']},{t['title']},{t['phase']},{t['status']},{countries}\n"
+            )
 
 def save_summary(profile, trials):
     with open(SUMMARY_MD, "w", encoding="utf-8") as f:
@@ -145,15 +242,23 @@ def save_summary(profile, trials):
         f.write(f"**Généré le :** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}\n\n")
         f.write("## Profil patient\n")
         f.write(json.dumps(profile, indent=2))
-        f.write("\n\n## Essais pertinents\n")
-        for t in trials[:10]:
-            f.write(f"- **{t['title']}** (NCT {t['nct_id']}) — Phase {t['phase']}, {t['status']}\n")
+        f.write("\n\n## Essais pertinents (multi-sources)\n")
+        for t in trials[:20]:
+            src = t.get("source", "unknown")
+            f.write(
+                f"- **{t['title']}** (source {src}, NCT {t['nct_id']}) — Phase {t['phase']}, {t['status']}\n"
+            )
 
 def log_alert(message):
     with open(ALERTS_LOG, "a", encoding="utf-8") as f:
         f.write(f"{datetime.now(UTC).isoformat()} — {message}\n")
+
+###############################################
+# 8. Main
+###############################################
+
 def main():
-    print("=== SaveMyWife Watcher ===")
+    print("=== SaveMyWife Watcher (multi-sources) ===")
 
     report = load_medical_report()
     profile = extract_profile(report)
@@ -179,7 +284,7 @@ def main():
     save_csv(filtered)
     save_summary(profile, filtered)
 
-    log_alert(f"Run completed — {len(filtered)} trials found.")
+    log_alert(f"Run completed — {len(filtered)} trials found from {len(trials)} raw entries.")
 
     print("Generated: results.json, results.txt, results.csv, summary_for_oncologist.md")
     print("Updated: alerts.log")
