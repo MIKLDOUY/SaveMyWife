@@ -479,5 +479,67 @@
       window.addEventListener('scroll', handleScroll);
     });
   </script>
+  
+<section id="outil-resultats">
+  <div class="card">
+    <h2>Résultats de la veille (ClinicalTrials.gov)</h2>
+    <p id="results-meta" style="font-size:0.9em;color:var(--muted);">
+      Chargement des résultats…
+    </p>
+    <div id="results-list"></div>
+  </div>
+</section>
+
+<script>
+  async function loadResults() {
+    try {
+      const resp = await fetch('results.json');
+      if (!resp.ok) {
+        document.getElementById('results-meta').textContent =
+          "Impossible de charger results.json (pas encore généré ?).";
+        return;
+      }
+      const data = await resp.json();
+      const meta = document.getElementById('results-meta');
+      meta.textContent =
+        `Dernière mise à jour : ${data.generated_at} — ${data.trial_count} essais trouvés.`;
+
+      const container = document.getElementById('results-list');
+      container.innerHTML = "";
+
+      if (!data.trials || data.trials.length === 0) {
+        container.innerHTML = "<p>Aucun essai en recrutement correspondant aux critères TNBC.</p>";
+        return;
+      }
+
+      data.trials.forEach(t => {
+        const div = document.createElement('div');
+        div.className = "card";
+        div.innerHTML = `
+          <h3>${t.title}</h3>
+          <p><strong>NCT :</strong> ${t.nct_id}</p>
+          <p><strong>Phase :</strong> ${t.phase || "N/A"}</p>
+          <p><strong>Statut :</strong> ${t.status}</p>
+          <p><strong>Pays :</strong> ${(t.countries || []).join(", ")}</p>
+        `;
+        container.appendChild(div);
+      });
+    } catch (e) {
+      document.getElementById('results-meta').textContent =
+        "Erreur lors du chargement des résultats.";
+      console.error(e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initAnimations();
+    initDossierToggle();
+    setActiveNav();
+    window.addEventListener('scroll', handleScroll);
+    loadResults();   // <-- on ajoute cet appel
+  });
+</script>
+
 </body>
 </html>
+
