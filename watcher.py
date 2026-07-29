@@ -10,11 +10,6 @@ RESULTS_TXT = "results.txt"
 RESULTS_CSV = "results.csv"
 SUMMARY_MD = "summary_for_oncologist.md"
 ALERTS_LOG = "alerts.log"
-
-###############################################
-# 1. Charger le dossier médical
-###############################################
-
 def load_medical_report():
     try:
         with open(MEDICAL_REPORT_PATH, "r", encoding="utf-8") as f:
@@ -22,11 +17,6 @@ def load_medical_report():
     except FileNotFoundError:
         print("ERROR: medical_report.md introuvable.")
         return ""
-
-###############################################
-# 2. Extraire le profil patient
-###############################################
-
 def extract_profile(text):
     profile = {
         "diagnosis": "TNBC metastatic",
@@ -48,11 +38,6 @@ def extract_profile(text):
     profile["notes"].append("Profil TNBC métastatique avec biomarqueurs détectés.")
 
     return profile
-
-###############################################
-# 3. Interroger ClinicalTrials.gov (robuste)
-###############################################
-
 def fetch_clinicaltrials():
     url = "https://clinicaltrials.gov/api/query/study_fields"
     params = {
@@ -82,11 +67,35 @@ def fetch_clinicaltrials():
         return []
 
     return data.get("StudyFieldsResponse", {}).get("StudyFields", [])
+def fetch_who_ictrp():
+    url = "https://trialsearch.who.int/TrialSearch/TrialSearch.aspx"
+    params = {"cond": "triple negative breast cancer"}
 
-###############################################
-# 4. Filtrer les essais pertinents
-###############################################
+    try:
+        r = requests.get(url, params=params, timeout=30)
+    except Exception as e:
+        print("[WHO ICTRP] Request error:", e)
+        return []
 
+    if r.status_code != 200:
+        print("[WHO ICTRP] HTTP error:", r.status_code)
+        return []
+
+    print("[WHO ICTRP] HTML response (first 300 chars):")
+    print(r.text[:300])
+
+    return []
+def fetch_euctr():
+    print("[EUCTR] Not implemented yet")
+    return []
+
+def fetch_inca():
+    print("[INCa] Not implemented yet")
+    return []
+
+def fetch_ctis():
+    print("[CTIS] Not implemented yet")
+    return []
 def filter_trials(trials, profile):
     filtered = []
 
@@ -114,11 +123,6 @@ def filter_trials(trials, profile):
         })
 
     return filtered
-
-###############################################
-# 5. Générer les fichiers de sortie
-###############################################
-
 def save_json(data):
     with open(RESULTS_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -148,18 +152,19 @@ def save_summary(profile, trials):
 def log_alert(message):
     with open(ALERTS_LOG, "a", encoding="utf-8") as f:
         f.write(f"{datetime.now(UTC).isoformat()} — {message}\n")
-
-###############################################
-# 6. Main
-###############################################
-
 def main():
     print("=== SaveMyWife Watcher ===")
 
     report = load_medical_report()
     profile = extract_profile(report)
 
-    trials = fetch_clinicaltrials()
+    trials = []
+    trials += fetch_clinicaltrials()
+    trials += fetch_who_ictrp()
+    trials += fetch_euctr()
+    trials += fetch_inca()
+    trials += fetch_ctis()
+
     filtered = filter_trials(trials, profile)
 
     results = {
