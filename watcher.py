@@ -1,20 +1,57 @@
 #!/usr/bin/env python3
-"""
-watcher.py — version mobile friendly, multi‑source prototype
-But : récupérer rapidement des essais TNBC pertinents et produire results.txt
-Usage : python watcher.py
-"""
-
+import json
+import re
 import requests
-import csv
-from datetime import datetime
+from datetime import datetime, UTC
 
-PROFILE = {
-    "tnbc": True,
-    "HER2_low": True,
-    "NECTIN4_gain": True,
-    "multi_lines": True
-}
+MEDICAL_REPORT_PATH = "medical_report.md"
+RESULTS_JSON = "results.json"
+RESULTS_TXT = "results.txt"
+RESULTS_CSV = "results.csv"
+SUMMARY_MD = "summary_for_oncologist.md"
+ALERTS_LOG = "alerts.log"
+
+###############################################
+# 1. Charger le dossier médical
+###############################################
+
+def load_medical_report():
+    try:
+        with open(MEDICAL_REPORT_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        print("ERROR: medical_report.md introuvable.")
+        return ""
+
+###############################################
+# 2. Extraire le profil patient
+###############################################
+
+def extract_profile(text):
+    profile = {
+        "diagnosis": "TNBC metastatic",
+        "biomarkers": [],
+        "notes": []
+    }
+
+    text_upper = text.upper()
+
+    if "NECTIN4" in text_upper:
+        profile["biomarkers"].append("NECTIN4_gain")
+    if "PIK3R1" in text_upper:
+        profile["biomarkers"].append("PIK3R1_mutation")
+    if "TP53" in text_upper:
+        profile["biomarkers"].append("TP53_mutation")
+    if re.search(r"HER2[^0-9]*1\+", text, re.IGNORECASE):
+        profile["biomarkers"].append("HER2_low")
+
+    profile["notes"].append("Profil TNBC métastatique avec biomarqueurs détectés.")
+
+    return profile
+
+###############################################
+# 3. Interroger ClinicalTrials.gov
+###############################################
 
 def fetch_clinicaltrials():
     url = "https://clinicaltrials.gov/api/query/study_fields"
@@ -22,7 +59,7 @@ def fetch_clinicaltrials():
         "expr": "triple negative breast cancer",
         "fields": "NCTId,BriefTitle,Condition,LocationCountry,Phase,OverallStatus",
         "min_rnk": 1,
-        "max_rnk": 100,
+        "max_rnk": 200,
         "fmt": "json"
     }
     headers = {"User-Agent": "SaveMyWife-watcher/1.0"}
@@ -30,70 +67,117 @@ def fetch_clinicaltrials():
     r = requests.get(url, params=params, headers=headers, timeout=30)
 
     print("STATUS:", r.status_code)
-    print("HEADERS:", r.headers)
-    print("RAW RESPONSE (first 500 chars):")
-    print(r.text[:500])
+    print("RAW RESPONSE (first 300 chars):")
+    print(r.text[:300])
+
+    if r.status_code != 200:
+        print("[ClinicalTrials] HTTP error:", r.status_code)
+        return []
 
     try:
-        return r.json().get("StudyFieldsResponse", {}).get("StudyFields", [])
+        data = r.json()
     except Exception as e:
-        print("JSON ERROR:", e)
+        print("[ClinicalTrials] Invalid JSON response")
+        print("ERROR:", e)
         return []
 
-   
+    return data.get("StudyFieldsResponse", {}).get("StudyFields", [])
 
-def fetch_accesstrial():
-    try:
-        r = requests.get("https://accesstrial.care/api/trials?condition=TNBC", timeout=10)
-        return r.json().get("trials", [])
-    except:
-        return []
+###############################################
+# 4. Filtrer les essais pertinents
+###############################################
 
-def normalize_trial(t):
-    # Retourne un dict uniforme pour l'export
-    return {
-        "id": (t.get("NCTId") or [""])[0] if isinstance(t.get("NCTId"), list) else t.get("id", ""),
-        "title": (t.get("BriefTitle") or [""])[0] if isinstance(t.get("BriefTitle"), list) else t.get("title", ""),
-        "phase": (t.get("Phase") or [""])[0] if isinstance(t.get("Phase"), list) else t.get("phase", ""),
-        "status": (t.get("OverallStatus") or [""])[0] if isinstance(t.get("OverallStatus"), list) else t.get("status", ""),
-        "country": (t.get("LocationCountry") or [""])[0] if isinstance(t.get("LocationCountry"), list) else t.get("country", "")
-    }
+def filter_trials(trials, profile):
+    filtered = []
 
-def filter_trials(trials):
-    out = []
     for t in trials:
-        title = (t.get("BriefTitle") or [""])[0].lower() if isinstance(t.get("BriefTitle"), list) else (t.get("title","").lower())
-        phase = (t.get("Phase") or [""])[0].lower() if isinstance(t.get("Phase"), list) else (t.get("phase","").lower())
+        nct = t.get("NCTId", [""])[0]
+        title = t.get("BriefTitle", [""])[0]
+        cond = t.get("Condition", [])
+        country = t.get("LocationCountry", [])
+        phase = t.get("Phase", [""])[0]
+        status = t.get("OverallStatus", [""])[0]
 
-        if PROFILE["tnbc"] and "triple" not in title and "tnbc" not in title:
+        if status.lower() not in ["recruiting", "not yet recruiting"]:
             continue
-        if PROFILE["multi_lines"] and not ("phase 1" in phase or "phase 2" in phase):
+
+        if not any("breast" in c.lower() for c in cond):
             continue
-        out.append(normalize_trial(t))
-    return out
 
-def save_results_txt(trials):
-    now = datetime.utcnow().isoformat(timespec='minutes') + "Z"
-    with open("results.txt", "w", encoding="utf-8") as f:
-        f.write(f"# Results generated {now}\n")
-        for t in trials:
-            f.write(f"{t['id']} - {t['title']} - {t['phase']} - {t['status']} - {t['country']}\n")
+        filtered.append({
+            "nct_id": nct,
+            "title": title,
+            "conditions": cond,
+            "countries": country,
+            "phase": phase,
+            "status": status
+        })
 
-def save_results_csv(trials):
-    with open("results.csv", "w", newline='', encoding="utf-8") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=["id","title","phase","status","country"])
-        writer.writeheader()
+    return filtered
+
+###############################################
+# 5. Générer les fichiers de sortie
+###############################################
+
+def save_json(data):
+    with open(RESULTS_JSON, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def save_txt(trials):
+    with open(RESULTS_TXT, "w", encoding="utf-8") as f:
         for t in trials:
-            writer.writerow(t)
+            f.write(f"{t['nct_id']} - {t['title']}\n")
+
+def save_csv(trials):
+    with open(RESULTS_CSV, "w", encoding="utf-8") as f:
+        f.write("NCT ID,Title,Phase,Status,Countries\n")
+        for t in trials:
+            countries = ";".join(t["countries"])
+            f.write(f"{t['nct_id']},{t['title']},{t['phase']},{t['status']},{countries}\n")
+
+def save_summary(profile, trials):
+    with open(SUMMARY_MD, "w", encoding="utf-8") as f:
+        f.write("# Synthèse pour l'oncologue\n\n")
+        f.write(f"**Généré le :** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}\n\n")
+        f.write("## Profil patient\n")
+        f.write(json.dumps(profile, indent=2))
+        f.write("\n\n## Essais pertinents\n")
+        for t in trials[:10]:
+            f.write(f"- **{t['title']}** (NCT {t['nct_id']}) — Phase {t['phase']}, {t['status']}\n")
+
+def log_alert(message):
+    with open(ALERTS_LOG, "a", encoding="utf-8") as f:
+        f.write(f"{datetime.now(UTC).isoformat()} — {message}\n")
+
+###############################################
+# 6. Main
+###############################################
 
 def main():
-    trials = []
-    trials += fetch_clinicaltrials()
-    trials += fetch_accesstrial()
-    filtered = filter_trials(trials)
-    save_results_txt(filtered)
-    save_results_csv(filtered)
-    print(f"{len(filtered)} essais trouvés. Fichiers results.txt et results.csv créés.")
+    print("=== SaveMyWife Watcher ===")
+
+    report = load_medical_report()
+    profile = extract_profile(report)
+
+    trials = fetch_clinicaltrials()
+    filtered = filter_trials(trials, profile)
+
+    results = {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "patient_profile": profile,
+        "trial_count": len(filtered),
+        "trials": filtered
+    }
+
+    save_json(results)
+    save_txt(filtered)
+    save_csv(filtered)
+    save_summary(profile, filtered)
+
+    log_alert(f"Run completed — {len(filtered)} trials found.")
+
+    print("Generated: results.json, results.txt, results.csv, summary_for_oncologist.md")
+    print("Updated: alerts.log")
 
 if __name__ == "__main__":
     main()
