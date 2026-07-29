@@ -25,7 +25,7 @@ def load_medical_report():
         return ""
 
 ###############################################
-# 2. Extraire le profil patient
+# 2. Extraire le profil patient + biomarqueurs
 ###############################################
 
 def extract_profile(text):
@@ -38,11 +38,11 @@ def extract_profile(text):
     text_upper = text.upper()
 
     if "NECTIN4" in text_upper:
-        profile["biomarkers"].append("NECTIN4_gain")
+        profile["biomarkers"].append("NECTIN4")
     if "PIK3R1" in text_upper:
-        profile["biomarkers"].append("PIK3R1_mutation")
+        profile["biomarkers"].append("PIK3R1")
     if "TP53" in text_upper:
-        profile["biomarkers"].append("TP53_mutation")
+        profile["biomarkers"].append("TP53")
     if re.search(r"HER2[^0-9]*1\+", text, re.IGNORECASE):
         profile["biomarkers"].append("HER2_low")
 
@@ -111,7 +111,7 @@ def fetch_clinicaltrials():
     return normalized
 
 ###############################################
-# 4. WHO ICTRP (HTML + BeautifulSoup)
+# 4. WHO ICTRP (HTML + BeautifulSoup, parsing générique)
 ###############################################
 
 def fetch_who_ictrp():
@@ -135,9 +135,13 @@ def fetch_who_ictrp():
     soup = BeautifulSoup(r.text, "html.parser")
     trials = []
 
-    # NOTE : ceci est un parsing générique, à ajuster selon le HTML réel.
-    # On cherche des lignes de tableau (<tr>) avec des colonnes (<td>).
-    for row in soup.find_all("tr"):
+    # Parsing générique : à ajuster après inspection du HTML réel.
+    table = soup.find("table")
+    if not table:
+        print("[WHO ICTRP] No table found")
+        return []
+
+    for row in table.find_all("tr"):
         cols = [c.get_text(strip=True) for c in row.find_all("td")]
         if len(cols) < 2:
             continue
@@ -162,7 +166,7 @@ def fetch_who_ictrp():
     return trials
 
 ###############################################
-# 5. EUCTR / INCa / CTIS — stubs prêts à compléter
+# 5. EUCTR / INCa / CTIS / centres FR — hooks
 ###############################################
 
 def fetch_euctr():
@@ -177,11 +181,57 @@ def fetch_ctis():
     print("[CTIS] TODO: implement real scraping/API")
     return []
 
+def fetch_french_centers():
+    print("[FR Centers] TODO: implement real integration (Curie, IPC, CLB, GR)")
+    return []
+
 ###############################################
-# 6. Filtrer les essais pertinents
+# 6. Scoring clinique + matching biomarqueurs
 ###############################################
 
-def filter_trials(trials, profile):
+def score_trial(trial, profile):
+    score = 0
+
+    # Source
+    if trial.get("source") == "CT.gov":
+        score += 2
+    if trial.get("source") == "WHO ICTRP":
+        score += 1
+
+    # Phase
+    phase = trial.get("phase", "").lower()
+    if "3" in phase:
+        score += 3
+    elif "2" in phase:
+        score += 2
+    elif "1" in phase:
+        score += 1
+
+    # Statut
+    status = trial.get("status", "").lower()
+    if "recruiting" in status:
+        score += 2
+    elif "not yet recruiting" in status:
+        score += 1
+
+    # TNBC / triple negative dans le titre
+    title = trial.get("title", "").lower()
+    if "triple negative" in title or "tnbc" in title:
+        score += 3
+
+    # Matching biomarqueurs dans le titre
+    biomarkers = profile.get("biomarkers", [])
+    for bm in biomarkers:
+        if bm.lower() in title:
+            score += 2
+
+    return score
+
+###############################################
+# 7. Filtrer + trier les essais pertinents
+###############################################
+
+def filter_and_rank_trials(trials, profile):
     filtered = []
 
     for t in trials:
@@ -193,13 +243,15 @@ def filter_trials(trials, profile):
         nct = t.get("nct_id", "")
         source = t.get("source", "unknown")
 
+        # condition sein
+        if not any("breast" in c.lower() for c in cond):
+            continue
+
         # statut si disponible
         if status and status.lower() not in ["recruiting", "not yet recruiting", ""]:
             continue
 
-        # condition sein
-        if not any("breast" in c.lower() for c in cond):
-            continue
+        s = score_trial(t, profile)
 
         filtered.append({
             "source": source,
@@ -208,13 +260,16 @@ def filter_trials(trials, profile):
             "conditions": cond,
             "countries": countries,
             "phase": phase,
-            "status": status
+            "status": status,
+            "score": s
         })
 
+    # tri par score décroissant
+    filtered.sort(key=lambda x: x["score"], reverse=True)
     return filtered
 
 ###############################################
-# 7. Générer les fichiers de sortie
+# 8. Générer les fichiers de sortie
 ###############################################
 
 def save_json(data):
@@ -225,15 +280,15 @@ def save_txt(trials):
     with open(RESULTS_TXT, "w", encoding="utf-8") as f:
         for t in trials:
             src = t.get("source", "unknown")
-            f.write(f"[{src}] {t['nct_id']} - {t['title']}\n")
+            f.write(f"[{src}] {t['nct_id']} (score {t['score']}) - {t['title']}\n")
 
 def save_csv(trials):
     with open(RESULTS_CSV, "w", encoding="utf-8") as f:
-        f.write("Source,NCT ID,Title,Phase,Status,Countries\n")
+        f.write("Source,NCT ID,Title,Phase,Status,Countries,Score\n")
         for t in trials:
             countries = ";".join(t["countries"])
             f.write(
-                f"{t.get('source','')},{t['nct_id']},{t['title']},{t['phase']},{t['status']},{countries}\n"
+                f"{t.get('source','')},{t['nct_id']},{t['title']},{t['phase']},{t['status']},{countries},{t['score']}\n"
             )
 
 def save_summary(profile, trials):
@@ -242,11 +297,11 @@ def save_summary(profile, trials):
         f.write(f"**Généré le :** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}\n\n")
         f.write("## Profil patient\n")
         f.write(json.dumps(profile, indent=2))
-        f.write("\n\n## Essais pertinents (multi-sources)\n")
+        f.write("\n\n## Essais pertinents (multi-sources, triés par score)\n")
         for t in trials[:20]:
             src = t.get("source", "unknown")
             f.write(
-                f"- **{t['title']}** (source {src}, NCT {t['nct_id']}) — Phase {t['phase']}, {t['status']}\n"
+                f"- **{t['title']}** (source {src}, NCT {t['nct_id']}) — Phase {t['phase']}, {t['status']}, score {t['score']}\n"
             )
 
 def log_alert(message):
@@ -254,11 +309,11 @@ def log_alert(message):
         f.write(f"{datetime.now(UTC).isoformat()} — {message}\n")
 
 ###############################################
-# 8. Main
+# 9. Main
 ###############################################
 
 def main():
-    print("=== SaveMyWife Watcher (multi-sources) ===")
+    print("=== SaveMyWife Watcher (multi-sources + scoring) ===")
 
     report = load_medical_report()
     profile = extract_profile(report)
@@ -269,22 +324,23 @@ def main():
     trials += fetch_euctr()
     trials += fetch_inca()
     trials += fetch_ctis()
+    trials += fetch_french_centers()
 
-    filtered = filter_trials(trials, profile)
+    ranked = filter_and_rank_trials(trials, profile)
 
     results = {
         "generated_at": datetime.now(UTC).isoformat(),
         "patient_profile": profile,
-        "trial_count": len(filtered),
-        "trials": filtered
+        "trial_count": len(ranked),
+        "trials": ranked
     }
 
     save_json(results)
-    save_txt(filtered)
-    save_csv(filtered)
-    save_summary(profile, filtered)
+    save_txt(ranked)
+    save_csv(ranked)
+    save_summary(profile, ranked)
 
-    log_alert(f"Run completed — {len(filtered)} trials found from {len(trials)} raw entries.")
+    log_alert(f"Run completed — {len(ranked)} ranked trials from {len(trials)} raw entries.")
 
     print("Generated: results.json, results.txt, results.csv, summary_for_oncologist.md")
     print("Updated: alerts.log")
