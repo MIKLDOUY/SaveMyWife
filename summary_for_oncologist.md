@@ -1,6 +1,6 @@
 # Synthèse pour l'oncologue
 
-**Généré le :** 2026-08-08 06:19 UTC
+**Généré le :** 2026-08-08 12:12 UTC
 
 ## Profil patient
 {
